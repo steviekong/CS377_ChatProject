@@ -13,20 +13,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-typedef struct {
-    char *userName;
-    int connected;
-    struct hostent *hp;
-    unsigned short client_port;
-    
-} user;
-
-typedef struct{
-    int roomNumber;
-    user *userList;
-
-} room;
-
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
 
