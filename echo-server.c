@@ -13,19 +13,27 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+
 typedef struct {
     char *userName;
     int connected;
+    int id;
     struct hostent *hp;
     unsigned short client_port;
     
 } user;
 
 typedef struct{
-    int roomNumber;
+    char *roomNumber;
+    int id; 
     user *userList;
 
 } room;
+
+user user_list[100];
+room room_list[100];
+
+int user_id = 0;
 
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
@@ -206,7 +214,10 @@ int main(int argc, char **argv) {
 
     printf("server connected to %s (%s), port %u\n", hp->h_name, haddrp,
            client_port);
-
+    user new_user = {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port};
+    user_list[user_id] = new_user;
+    user_id++;
+    printf("the user id is %d\n", user_list[user_id].id);
     // Create a new thread to handle the connection.
     pthread_t tid;
     pthread_create(&tid, NULL, thread, connfdp);
