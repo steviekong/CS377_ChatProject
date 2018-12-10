@@ -30,6 +30,11 @@ typedef struct{
 
 } room;
 
+typedef struct{
+    int arg1;
+    user arg2;
+} arg_struct;
+
 user user_list[100];
 room room_list[100];
 
@@ -53,79 +58,73 @@ int msgi = 0;
 // A lock for the message buffer.
 pthread_mutex_t lock;
 
-/*void check_message(char* theMessage) {
- if (&theMessage[0] == "\\") { //first char is \, handle command
-   if(strcmp(theMessage, "\\ROOMS")) {
-     //rooms
-   } else if (strcmp(theMessage, "\\LEAVE")) {
-     //leave
-   } else if (strcmp(theMessage, "\\WHO")) {
-     //who
-   } else if (strcmp(theMessage, "\\HELP")) {
-     //help
-   } else {
-     int count = 1;
-     char* commandString;
-     for (int i = 1; theMessage[i] != ' '; ++i) {
-       commandString[i] = theMessage[i];
-       count++;
-     }
-     if (strcmp(commandString, "JOIN")) {
-       char* nickString;
-       int tempCount = count;
-       for (int i = count; theMessage[i] != ' '; ++i) { //might need to be count+1 instead of count to skip white space
-         nickString[i-tempCount] = theMessage[i];
-         count++;
-       }
-       if (strcmp(nickString, userName)) { //username on room's list
-        char* roomString;
-        int tempCount = count;
-        for (int i = count; theMessage[i] != '\0'; ++i) { //might need to be count+1 instead of count to skip white space
-          roomString[i-tempCount] = theMessage[i];
-        }
-          if (strcmp(roomString, roomName)) { //check from list of rooms to see if it exists
-          //join room
-          
-          } 
-          else {
-             printf("Room doesn't exist.\n", );
-           }
-      } 
-      else {
-        printf("Nickname doesn't exist.\n");
-      }
-      }
-      else if (strcmp(commandString, userName)) {//username on room's list
-       //send userName rest of message after white space, don't know if we care about white space
-      } 
-      else {
-       printf("\"" + theMessage + "\"" + " command not recognized.\n");
-     }
-   }
- } 
- else {
-   //do normal message handling
- }
-}*/
+//JOIN route
+void join(char* nickname, char* roomname, user user_obj){
 
-int check_protocol(char* command){
-  //if(&command[0] == '\\'){
-  if(strcmp(command, "\\") == 0){
+}
+/*
+//ROOMS route 
+char **rooms(){
+
+}
+//LEAVE route
+void leave(){
+
+}
+//WHO route 
+char **who(){
+
+}
+//HELP route
+char **help(){
+
+}
+//nickname route
+void nickname(char *user1, char*user2, char* message){
+  
+}
+*/
+//invalid command route 
+void invalid(){
+
+}
+
+int check_protocol(char* command, user user_obj, int connfd){
+  char * pch = strtok(command, " ");
+  if(command[0] == '\\'){
     // do something
+    if(strncmp(pch, "\\JOIN", strlen("\\JOIN")) == 0){
+      char* nick = strtok(command, " ");
+      char* room = strtok(command, " ");
+      join(nick, room, user_obj);
+    	return 1;
+    }
+  /*else if(strcmp(pch, "\\ROOMS") == 0){
+    rooms();
+  	return 1;
   }
-  else if(strncmp(command, "\JOIN", strlen("\JOIN")) == 0)
+  else if(strcmp(pch, "\\LEAVE") == 0){
+    leave();
   	return 1;
-  else if(strcmp(command, "\ROOMS") == 0)
+  }
+  else if(strcmp(pch, "\\WHO") == 0){
+    who();
   	return 1;
-  else if(strcmp(command, "\LEAVE") == 0)
+  }
+  else if(strcmp(pch, "\\HELP") == 0){
+    help();
   	return 1;
-  else if(strcmp(command, "\WHO") == 0)
+  }
+  else if(isUser(pch)){
+    char * username;
+    strcpy(username, pch+1);
+    char * message = strtok(command, " ");
+    nickname(user_obj, username, message);
   	return 1;
-  else if(strcmp(command, "\HELP") == 0)
-  	return 1;
-  else if(strcmp(command, "\nickname", strlen("\nickname")) == 0)
-  	return 1;
+  }*/
+  }
   else{
+    invalid();
     return 0; 
   }
 }
@@ -297,19 +296,21 @@ int main(int argc, char **argv) {
     user_id++;
     printf("the user id is %d\n", user_list[user_id].id);
     // Create a new thread to handle the connection.
+    arg_struct args = {.arg1 = connfdp, .arg2 = new_user};
     pthread_t tid;
-    pthread_create(&tid, NULL, thread, connfdp);
+    pthread_create(&tid, NULL, thread, (void *)&args);
   }
 }
 
 /* thread routine */
-void *thread(void *vargp) {
+void *thread(void *arguments) {
   // Grab the connection file descriptor.
-  int connfd = *((int *)vargp);
+  arg_struct *args = arguments;
+  int connfd = *((int *)(args->arg1));
   // Detach the thread to self reap.
   pthread_detach(pthread_self());
   // Free the incoming argument - allocated in the main thread.
-  free(vargp);
+  free(arguments);
   // Handle the echo client requests.
   echo(connfd);
   printf("client disconnected.\n");
