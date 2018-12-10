@@ -109,9 +109,22 @@ pthread_mutex_t lock;
 }*/
 
 int check_protocol(char* command){
-  if(&command[0] == '\\'){
-    
+  //if(&command[0] == '\\'){
+  if(strcmp(command, "\\") == 0){
+    // do something
   }
+  else if(strncmp(command, "\JOIN", strlen("\JOIN")) == 0)
+  	return 1;
+  else if(strcmp(command, "\ROOMS") == 0)
+  	return 1;
+  else if(strcmp(command, "\LEAVE") == 0)
+  	return 1;
+  else if(strcmp(command, "\WHO") == 0)
+  	return 1;
+  else if(strcmp(command, "\HELP") == 0)
+  	return 1;
+  else if(strcmp(command, "\nickname", strlen("\nickname")) == 0)
+  	return 1;
   else{
     return 0; 
   }
