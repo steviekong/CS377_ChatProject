@@ -53,6 +53,70 @@ int msgi = 0;
 // A lock for the message buffer.
 pthread_mutex_t lock;
 
+/*void check_message(char* theMessage) {
+ if (&theMessage[0] == "\\") { //first char is \, handle command
+   if(strcmp(theMessage, "\\ROOMS")) {
+     //rooms
+   } else if (strcmp(theMessage, "\\LEAVE")) {
+     //leave
+   } else if (strcmp(theMessage, "\\WHO")) {
+     //who
+   } else if (strcmp(theMessage, "\\HELP")) {
+     //help
+   } else {
+     int count = 1;
+     char* commandString;
+     for (int i = 1; theMessage[i] != ' '; ++i) {
+       commandString[i] = theMessage[i];
+       count++;
+     }
+     if (strcmp(commandString, "JOIN")) {
+       char* nickString;
+       int tempCount = count;
+       for (int i = count; theMessage[i] != ' '; ++i) { //might need to be count+1 instead of count to skip white space
+         nickString[i-tempCount] = theMessage[i];
+         count++;
+       }
+       if (strcmp(nickString, userName)) { //username on room's list
+        char* roomString;
+        int tempCount = count;
+        for (int i = count; theMessage[i] != '\0'; ++i) { //might need to be count+1 instead of count to skip white space
+          roomString[i-tempCount] = theMessage[i];
+        }
+          if (strcmp(roomString, roomName)) { //check from list of rooms to see if it exists
+          //join room
+          
+          } 
+          else {
+             printf("Room doesn't exist.\n", );
+           }
+      } 
+      else {
+        printf("Nickname doesn't exist.\n");
+      }
+      }
+      else if (strcmp(commandString, userName)) {//username on room's list
+       //send userName rest of message after white space, don't know if we care about white space
+      } 
+      else {
+       printf("\"" + theMessage + "\"" + " command not recognized.\n");
+     }
+   }
+ } 
+ else {
+   //do normal message handling
+ }
+}*/
+
+int check_protocol(char* command){
+  if(&command[0] == '\\'){
+    
+  }
+  else{
+    return 0; 
+  }
+}
+
 // Initialize the message buffer to empty strings.
 void init_message_buf() {
   int i;
@@ -214,6 +278,7 @@ int main(int argc, char **argv) {
 
     printf("server connected to %s (%s), port %u\n", hp->h_name, haddrp,
            client_port);
+
     user new_user = {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port};
     user_list[user_id] = new_user;
     user_id++;
