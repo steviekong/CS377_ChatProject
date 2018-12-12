@@ -74,7 +74,7 @@ void add_message(char *buf) {
 }
 
 //JOIN route
-int join(char* roomname, user *user_obj, int connfd){
+void join(char* roomname, user *user_obj, int connfd){
   room *found = NULL;
   int i = 0; 
   while(i < 100 && room_list[i].roomName != NULL){
@@ -89,17 +89,21 @@ int join(char* roomname, user *user_obj, int connfd){
   }
   if(found != NULL){
     found->userCount += 1;
+    printf(" user count is %d\n",found->userCount);
     user_obj->roomName = roomname;
+    pthread_mutex_lock(&lock);
     found->userList[found->userCount] = user_obj;
     char str[1000];
     strcpy(str, user_obj->userName);
     strcat(str, " ");
     strcat(str, roomname);
     strcat(str, "\n\0");
-    add_message(str);
-    return send_message(connfd, str);
+    send_message(connfd, str);
+    pthread_mutex_unlock(&lock);
   }
   else{
+    printf("creating neew room %s\n", roomname);
+    pthread_mutex_lock(&lock);
     room *new_room = (room*)(malloc(sizeof(room)));
     new_room->roomName = roomname;
     new_room->userCount = 0;
@@ -107,15 +111,15 @@ int join(char* roomname, user *user_obj, int connfd){
     new_room->userList[new_room->userCount] = user_obj;
     room_list[numRooms] = *new_room;
     numRooms += 1;
+    pthread_mutex_unlock(&lock);
     char str[1000];
     strcpy(str, user_obj->userName);
     strcat(str, " ");
     strcat(str, roomname);
     strcat(str, "\n\0");
-    add_message(str);
-    return send_message(connfd, str);
+    send_message(connfd, str);
+    pthread_mutex_unlock(&lock);
   }
-  return 0;
 }
 
 //ROOMS route 
@@ -159,14 +163,17 @@ void who(user* user_obj, int connfd){
       strcat(users, found->userList[j]->userName);
       strcat(users, "\n");
     }
+    add_message(users);
     send_message(connfd, users);
   }
 }
-/*
-//HELP route
-char **help(){
-
+void help(int connfd){
+ char *toOut = "'\\JOIN nickname room': allows users to enter chatrooms,\n'\\ROOMS': see list of available chatrooms,\n'\\LEAVE': leave chatroom,\n'\\WHO': see list of users in current room\n";
+ pthread_mutex_lock(&lock);
+ send_message(connfd, toOut);
+ pthread_mutex_unlock(&lock);
 }
+/*
 //nickname route
 void nickname(char *user1, char*user2, char* message){
   
@@ -188,18 +195,18 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
       int current_connfd = found->userList[j]->connfd;
       printf("USer message: %s UserName: %s\n", message, found->userList[j]->userName);
       char final_message[1000];
-      strcpy(final_message, found->userList[j]->userName);
+      strcpy(final_message, user_obj->userName);
       strcat(final_message,": ");
       strcat(final_message, message);
       strcat(message, "\n\0");
-      add_message(final_message);
+      pthread_mutex_lock(&lock);
       send_message(current_connfd, final_message);
+      pthread_mutex_unlock(&lock);
     }
   }
 }
 
 int check_protocol(char* command, user *user_obj, int connfd){
-  printf("%s\n", command);
   char copy_command[1000];
   strcpy(copy_command, command);
   if(command[0] == '\\'){
@@ -212,7 +219,8 @@ int check_protocol(char* command, user *user_obj, int connfd){
       pch = strtok(NULL, " ");
       char* room = pch;
       strcpy(user_obj->userName, nick);
-      return join(room, user_obj, connfd);
+      join(room, user_obj, connfd);
+      return 1;
     }
     else if(strcmp(pch, "\\ROOMS") == 0){
       rooms(connfd);
@@ -226,11 +234,12 @@ int check_protocol(char* command, user *user_obj, int connfd){
       who(user_obj, connfd);
     	return 1;
     }
-    /*
+    
     else if(strcmp(pch, "\\HELP") == 0){
-      help();
+      help(connfd);
     	return 1;
     }
+    /*
     else if(isUser(pch)){
       char * username;
       strcpy(username, pch+1);
