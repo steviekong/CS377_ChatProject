@@ -59,9 +59,10 @@ def isValidMsg(message):
         if cmd_wos not in cmds:
             return False, '"' + cmd_ws + '" command not recognized'
 
-        rest_of_msg = message.split(' ', 1)[1:]
+        rest_of_msg = message.split(' ')[1:]
+        #print("rest_of_msg = " + str(rest_of_msg) + ", len(rest_of_msg) = " + str(len(rest_of_msg)))
 
-        if (cmd_wos == "JOIN" and len(rest_of_msg) > 2) or (cmd_wos == "JOIN" and len(rest_of_msg) <= 1):
+        if cmd_wos == "JOIN" and len(rest_of_msg) != 2:
             return False, "Improper Usage: \\JOIN <nickname> <room>"
 
         if cmd_wos == "ROOMS" and len(rest_of_msg) > 0:
@@ -107,14 +108,15 @@ def client():
         sentence = prompt_on_last(connection)
 
     while sentence != 'quit':
+        #print("Sentence: " + sentence)
         cmd_ok, string = isValidMsg(sentence)
 
         if(cmd_ok):
             sentence = string
-            print("Sending: " + string)
+            #print("Sending: " + string)
             send(connection, sentence)
             response = recv(connection)
-            print("Response: " + response.strip())
+            print(response.strip())
         else:
             print(string)
 
