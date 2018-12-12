@@ -25,7 +25,7 @@ typedef struct {
 } user;
 
 typedef struct{
-    char *roomName;
+    char roomName[100];
     user *userList[100];
     int userCount;
 } room;
@@ -105,7 +105,7 @@ void join(char* roomname, user *user_obj, int connfd){
     printf("creating neew room %s\n", roomname);
     pthread_mutex_lock(&lock);
     room *new_room = (room*)(malloc(sizeof(room)));
-    new_room->roomName = roomname;
+    strcpy(new_room->roomName,roomname);
     new_room->userCount = 0;
     user_obj->roomName = roomname;
     new_room->userList[new_room->userCount] = user_obj;
@@ -193,7 +193,7 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
   if(found != NULL){
     for(int j = 0; j <= found->userCount; j ++){
       int current_connfd = found->userList[j]->connfd;
-      printf("USer message: %s UserName: %s\n", message, found->userList[j]->userName);
+      printf("USer message: %s UserName: %s roomName: %s\n", message, found->userList[j]->userName, found->roomName);
       char final_message[1000];
       strcpy(final_message, user_obj->userName);
       strcat(final_message,": ");
