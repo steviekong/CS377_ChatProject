@@ -15,7 +15,7 @@
 
 
 typedef struct {
-    char *userName;
+    char userName[1000];
     int connected;
     int id;
     struct hostent *hp;
@@ -62,6 +62,17 @@ int send_message(int connfd, char *message) {
   return send(connfd, message, strlen(message), 0);
 }
 
+// This function adds a message that was received to the message buffer.
+// Notice the lock around the message buffer.
+void add_message(char *buf) {
+  pthread_mutex_lock(&lock);
+  strncpy(message_buf[msgi % 20], buf, 50);
+  int len = strlen(message_buf[msgi % 20]);
+  message_buf[msgi % 20][len] = '\0';
+  msgi++;
+  pthread_mutex_unlock(&lock);
+}
+
 //JOIN route
 int join(char* roomname, user *user_obj, int connfd){
   room *found = NULL;
@@ -85,6 +96,7 @@ int join(char* roomname, user *user_obj, int connfd){
     strcat(str, " ");
     strcat(str, roomname);
     strcat(str, "\n\0");
+    add_message(str);
     return send_message(connfd, str);
   }
   else{
@@ -100,6 +112,7 @@ int join(char* roomname, user *user_obj, int connfd){
     strcat(str, " ");
     strcat(str, roomname);
     strcat(str, "\n\0");
+    add_message(str);
     return send_message(connfd, str);
   }
   return 0;
@@ -113,11 +126,11 @@ int rooms(int connfd){
   strcat(rooms, "\n");
   int i = 1;
   while(i <= numRooms && room_list[i].roomName != NULL){
-    printf("works\n");
     strcat(rooms, room_list[i].roomName);
     strcat(rooms, "\n");
     i++;
   }
+  add_message(rooms);
   return send_message(connfd, rooms);
 }
 
@@ -164,9 +177,7 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
   int i = 0; 
   room *found;
   while(i < 100 && room_list[i].roomName != NULL){
-    printf("looping\n");
     if(strcmp(room_list[i].roomName, user_obj->roomName) == 0){
-      printf("works\n");
       found = &room_list[i];
       break; 
     }
@@ -176,11 +187,12 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
     for(int j = 0; j <= found->userCount; j ++){
       int current_connfd = found->userList[j]->connfd;
       printf("USer message: %s UserName: %s\n", message, found->userList[j]->userName);
-      char final_message[1000] = "";
+      char final_message[1000];
       strcpy(final_message, found->userList[j]->userName);
       strcat(final_message,": ");
       strcat(final_message, message);
       strcat(message, "\n\0");
+      add_message(final_message);
       send_message(current_connfd, final_message);
     }
   }
@@ -190,7 +202,6 @@ int check_protocol(char* command, user *user_obj, int connfd){
   printf("%s\n", command);
   char copy_command[1000];
   strcpy(copy_command, command);
-  printf("works username %s\n", user_obj->userName);
   if(command[0] == '\\'){
     // do something
     char* pch = strtok(command, " ");
@@ -200,7 +211,7 @@ int check_protocol(char* command, user *user_obj, int connfd){
       char* nick = pch;
       pch = strtok(NULL, " ");
       char* room = pch;
-      user_obj->userName = nick;
+      strcpy(user_obj->userName, nick);
       return join(room, user_obj, connfd);
     }
     else if(strcmp(pch, "\\ROOMS") == 0){
@@ -241,17 +252,6 @@ void init_message_buf() {
   for (i = 0; i < 20; i++) {
     strcpy(message_buf[i], "");
   }
-}
-
-// This function adds a message that was received to the message buffer.
-// Notice the lock around the message buffer.
-void add_message(char *buf) {
-  pthread_mutex_lock(&lock);
-  strncpy(message_buf[msgi % 20], buf, 50);
-  int len = strlen(message_buf[msgi % 20]);
-  message_buf[msgi % 20][len] = '\0';
-  msgi++;
-  pthread_mutex_unlock(&lock);
 }
 
 // Destructively modify string to be upper case
@@ -313,7 +313,7 @@ void echo(int connfd, user* user_obj) {
   while ((n = receive_message(connfd, message)) > 0) {
     message[n] = '\0';  // null terminate message (for string operations)
     printf("Server received message %s (%d bytes)\n", message, (int)n);
-    printf("echo username is%s\n", user_obj->userName);
+    printf("%s\n", user_obj->userName);
     n = process_message(connfd, message, user_obj);
   }
 }
@@ -394,7 +394,7 @@ int main(int argc, char **argv) {
            client_port);
 
     user *new_user = malloc(sizeof(user));
-    *new_user = (user) {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port, .connfd = *connfdp};
+    *new_user = (user) {.connected = 1, .id = user_id, .hp = hp, .client_port = client_port, .connfd = *connfdp};
     user_id++;
     // Create a new thread to handle the connection.
     arg_struct args = {.arg1 = *connfdp, .arg2 = new_user};
@@ -413,7 +413,6 @@ void *thread(void *arguments) {
   // Free the incoming argument - allocated in the main thread. YOU NEED TO DO THIS!! THIS CODE LEAKS LIKE HELL !!!!!
 
   // Handle the echo client requests.
-  printf("username before echo %s\n", (user*)args->arg2->userName);
   echo(connfd, (user*)args->arg2);
   printf("client disconnected.\n");
   // Don't forget to close the connection!
