@@ -86,10 +86,8 @@ int join(char* roomname, user *user_obj, int connfd){
     user_obj->roomName = roomname;
     found->userList[found->userCount] = user_obj;
     char str[1000];
-    strcpy(str, "You have joined an existing room called ");
-    strcat(str, roomname);
-    strcat(str, ".\n");
-    strcat(str, "Your nickname is ");
+    strcpy(str, roomname);
+    strcat(str, " ");
     strcat(str, user_obj->userName);
     strcat(str, "\n\0");
     return send_message(connfd, str);
@@ -103,21 +101,29 @@ int join(char* roomname, user *user_obj, int connfd){
     new_room->userList[new_room->userCount] = user_obj;
     room_list[numRooms] = *new_room;
     char str[1000];
-    strcpy(str, "You have created and joined a new room called ");
-    strcat(str, roomname);
-    strcat(str, ".\n");
-    strcat(str, "Your nickname is ");
+    strcpy(str, roomname);
+    strcat(str, " ");
     strcat(str, user_obj->userName);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
   return 0;
 }
-/*
-//ROOMS route 
-char **rooms(){
 
+//ROOMS route 
+void rooms(int connfd){
+  if(room_list[0].roomName == NULL) send_message(connfd, "There are no rooms on the server!");
+  char rooms[1000];
+  strcpy(rooms, room_list[0].roomName);
+  strcat(rooms, " ");
+  int i = 1;
+  while(i < 100 && room_list[i].roomName != NULL){
+    strcat(rooms, room_list[i].roomName);
+    strcat(rooms, " ");
+  }
+  send_message(connfd, rooms);
 }
+/*
 //LEAVE route
 void leave(){
 
@@ -146,15 +152,10 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
       found = &room_list[i];
       break; 
     }
-    else{
-      printf("else\n");
-    }
   }
   if(found != NULL){
-    printf("sending to all users\n");
     for(int j = 0; j <= found->userCount; j ++){
       int current_connfd = found->userList[j]->connfd;
-      printf("pls work\n");
       send_message(current_connfd, message);
     }
   }
@@ -174,11 +175,11 @@ int check_protocol(char* command, user *user_obj, int connfd){
       user_obj->userName = nick;
       return join(room, user_obj, connfd);
     }
-  /*else if(strcmp(pch, "\\ROOMS") == 0){
+  else if(strcmp(pch, "\\ROOMS") == 0){
     rooms();
   	return 1;
   }
-  else if(strcmp(pch, "\\LEAVE") == 0){
+  /*else if(strcmp(pch, "\\LEAVE") == 0){
     leave();
   	return 1;
   }
