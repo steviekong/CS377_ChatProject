@@ -20,12 +20,13 @@ typedef struct {
     int id;
     struct hostent *hp;
     unsigned short client_port;
-    
+    char *roomName;
+    int connfd; 
 } user;
 
 typedef struct{
     char *roomName;
-    user *userList;
+    user *userList[100];
     int userCount;
 } room;
 
@@ -34,9 +35,9 @@ typedef struct{
     user *arg2;
 } arg_struct;
 
-room room_list[100] = {NULL};
-
-int user_id = 0;
+int numRooms = 0; 
+room room_list[100];
+int user_id = 0; 
 
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
@@ -56,42 +57,57 @@ int msgi = 0;
 // A lock for the message buffer.
 pthread_mutex_t lock;
 
+// A wrapper around send to simplify calls.
+int send_message(int connfd, char *message) {
+  return send(connfd, message, strlen(message), 0);
+}
+
 //JOIN route
-int join(char* roomname, user user_obj, int connfd){
+int join(char* roomname, user *user_obj, int connfd){
   room *found = NULL;
   int i = 0; 
-  while(i < 100 && room_list){
+  while(i < 100 && room_list[i].roomName != NULL){
+    printf("executing join %s\n", room_list[i].roomName);
     if(strcmp(room_list[i].roomName, roomname) == 0){
-      *found = room_list[i];
+      printf("found!\n");
+      found = &room_list[i];
+      printf("wokring\n");
       break; 
+    }
+    else{
+      printf("we didnt find anything\n");
     }
     i++;
   }
+  printf("executing join after while\n");
   if(found != NULL){
-    found->userList[found->userCount] = user_obj;
+    printf("adding user to room\n");
     found->userCount += 1;
+    user_obj->roomName = roomname;
+    found->userList[found->userCount] = user_obj;
     char str[1000];
     strcpy(str, "You have joined an existing room called ");
     strcat(str, roomname);
     strcat(str, ".\n");
-    strcat(str, "Your nickname is");
-    strcat(str, user_obj.userName);
+    strcat(str, "Your nickname is ");
+    strcat(str, user_obj->userName);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
   else{
+    printf("adding new room\n");
     room *new_room = (room*)(malloc(sizeof(room)));
     new_room->roomName = roomname;
-    user user_list[100] = {NULL};
-    new_room->userList = user_list;
     new_room->userCount = 0;
+    user_obj->roomName = roomname;
     new_room->userList[new_room->userCount] = user_obj;
+    room_list[numRooms] = *new_room;
     char str[1000];
-    strcpy(str, "You have created and joined a new room called");
+    strcpy(str, "You have created and joined a new room called ");
     strcat(str, roomname);
     strcat(str, ".\n");
-    strcat(str, "Your nickname is");
-    strcat(str, user_obj.userName);
+    strcat(str, "Your nickname is ");
+    strcat(str, user_obj->userName);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
@@ -120,18 +136,42 @@ void nickname(char *user1, char*user2, char* message){
 }
 */
 //invalid command route 
-void invalid(){
-
+void send_all_in_room(user* user_obj, char* message, int connfd){
+  int i = 0; 
+  room *found;
+  while(i < 100 && room_list[i].roomName != NULL){
+    printf("looping\n");
+    if(strcmp(room_list[i].roomName, user_obj->roomName) == 0){
+      printf("works\n");
+      found = &room_list[i];
+      break; 
+    }
+    else{
+      printf("else\n");
+    }
+  }
+  if(found != NULL){
+    printf("sending to all users\n");
+    for(int j = 0; j <= found->userCount; j ++){
+      int current_connfd = found->userList[j]->connfd;
+      printf("pls work\n");
+      send_message(current_connfd, message);
+    }
+  }
 }
 
-int check_protocol(char* command, user user_obj, int connfd){
+int check_protocol(char* command, user *user_obj, int connfd){
   printf("%s\n", command);
-  char * pch = strtok(command, " ");
+  char* pch = strtok(command, " ");
   if(command[0] == '\\'){
     // do something
     if(strncmp(pch, "\\JOIN", strlen("\\JOIN")) == 0){
-      char* nick = strtok(command, " ");
-      char* room = strtok(command, " ");
+      printf("joining\n");
+      pch = strtok(NULL, " ");
+      char* nick = pch;
+      pch = strtok(NULL, " ");
+      char* room = pch;
+      user_obj->userName = nick;
       return join(room, user_obj, connfd);
     }
   /*else if(strcmp(pch, "\\ROOMS") == 0){
@@ -159,8 +199,8 @@ int check_protocol(char* command, user user_obj, int connfd){
   }*/
   }
   else{
-    printf("this broke\n");
-    invalid();
+    printf("User message\n");
+    send_all_in_room(user_obj, command, connfd);
     return 1; 
   }
 }
@@ -197,11 +237,6 @@ int receive_message(int connfd, char *message) {
   return recv(connfd, message, MAXLINE, 0);
 }
 
-// A wrapper around send to simplify calls.
-int send_message(int connfd, char *message) {
-  return send(connfd, message, strlen(message), 0);
-}
-
 // A predicate function to test incoming message.
 int is_list_message(char *message) { return strncmp(message, "-", 1) == 0; }
 
@@ -228,13 +263,13 @@ int send_echo_message(int connfd, char *message) {
   return send_message(connfd, message);
 }
 
-int process_message(int connfd, char *message) {
+int process_message(int connfd, char *message, user *user_obj) {
   if (is_list_message(message)) {
     printf("Server responding with list response.\n");
     return send_list_message(connfd);
   } else {
     printf("Server responding with echo response.\n");
-    return send_echo_message(connfd, message);
+    return check_protocol(message, user_obj, connfd);
   }
 }
 
@@ -248,7 +283,7 @@ void echo(int connfd, user* user_obj) {
   while ((n = receive_message(connfd, message)) > 0) {
     message[n] = '\0';  // null terminate message (for string operations)
     printf("Server received message %s (%d bytes)\n", message, (int)n);
-    n = check_protocol(message, *user_obj, connfd);
+    n = process_message(connfd, message, user_obj);
   }
 }
 
@@ -328,7 +363,7 @@ int main(int argc, char **argv) {
            client_port);
 
     user *new_user = (user*)malloc(sizeof(user));
-    *new_user = (user) {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port};
+    *new_user = (user) {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port, .connfd = *connfdp};
     user_id++;
     printf("the user id is %d\n", user_id);
     // Create a new thread to handle the connection.
@@ -352,7 +387,7 @@ void *thread(void *arguments) {
   // Free the incoming argument - allocated in the main thread. YOU NEED TO DO THIS!! THIS CODE LEAKS LIKE HELL !!!!!
 
   // Handle the echo client requests.
-  echo(connfd, (user*)&args->arg2);
+  echo(connfd, (user*)args->arg2);
   printf("client disconnected.\n");
   // Don't forget to close the connection!
   close(connfd);
