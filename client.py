@@ -61,7 +61,7 @@ def isValidMsg(message):
 
         rest_of_msg = message.split(' ', 1)[1:]
 
-        if cmd_wos == "JOIN" and len(rest_of_msg) > 2:
+        if (cmd_wos == "JOIN" and len(rest_of_msg) > 2) or (cmd_wos == "JOIN" and len(rest_of_msg) <= 1):
             return False, "Improper Usage: \\JOIN <nickname> <room>"
 
         if cmd_wos == "ROOMS" and len(rest_of_msg) > 0:
@@ -79,7 +79,6 @@ def isValidMsg(message):
         if cmd_wos == "NICKNAME" and len(rest_of_msg) <= 0:
             return False, "Improper Usage: \\nickname <message>"
 
-
         message = cmd_ws + ' ' + ' '.join(rest_of_msg)
 
     return True, message
@@ -88,7 +87,7 @@ def isValidMsg(message):
 
 def client():
     if len(sys.argv) > 2:
-        print("Improper usage: python3 <file> <OPTIONAL: file.txt>")
+        print("Improper usage: python3 client.py <OPTIONAL: file.txt>")
         sys.exit()
 
     connection = connect()
@@ -101,12 +100,13 @@ def client():
     if len(sys.argv) > 1:
         isFile = True
         with open(sys.argv[1]) as f:
-            lines = [line.rstrip('\n') for line in f] 
+            lines = [line.rstrip('\r\n') for line in f]
+            #print("Lines: " + str(lines))
             sentence = lines[file_index]
     else:
         sentence = prompt_on_last(connection)
 
-    while sentence != 'quit' or (isFile and file_index < len(lines)):
+    while sentence != 'quit':
         cmd_ok, string = isValidMsg(sentence)
 
         if(cmd_ok):
@@ -114,12 +114,16 @@ def client():
             print("Sending: " + string)
             send(connection, sentence)
             response = recv(connection)
-            print(response.strip())
+            print("Response: " + response.strip())
         else:
             print(string)
 
         file_index = file_index+1
-        sentence = lines[file_index] if isFile else prompt_on_last(connection)
+
+        if isFile and file_index < len(lines):
+            sentence = lines[file_index]
+        else:
+            sentence = prompt_on_last(connection)
 
 
 client()
