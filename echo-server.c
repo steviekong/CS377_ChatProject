@@ -100,6 +100,7 @@ int join(char* roomname, user *user_obj, int connfd){
     user_obj->roomName = roomname;
     new_room->userList[new_room->userCount] = user_obj;
     room_list[numRooms] = *new_room;
+    numRooms += 1;
     char str[1000];
     strcpy(str, roomname);
     strcat(str, " ");
@@ -111,23 +112,28 @@ int join(char* roomname, user *user_obj, int connfd){
 }
 
 //ROOMS route 
-void rooms(int connfd){
-  if(room_list[0].roomName == NULL) send_message(connfd, "There are no rooms on the server!");
+int rooms(int connfd){
+  if(room_list[0].roomName == NULL) return send_message(connfd, "There are no rooms on the server!");
   char rooms[1000];
   strcpy(rooms, room_list[0].roomName);
-  strcat(rooms, " ");
+  strcat(rooms, "\n");
   int i = 1;
-  while(i < 100 && room_list[i].roomName != NULL){
+  while(i <= numRooms && room_list[i].roomName != NULL){
+    printf("works\n");
     strcat(rooms, room_list[i].roomName);
-    strcat(rooms, " ");
+    strcat(rooms, "\n");
+    i++;
   }
-  send_message(connfd, rooms);
+  return send_message(connfd, rooms);
+}
+
+//LEAVE route
+void leave(int connfd){
+  send_message(connfd, "GOODBYE");
+  close(connfd);
+  pthread_exit((void *)2);
 }
 /*
-//LEAVE route
-void leave(){
-
-}
 //WHO route 
 char **who(){
 
@@ -176,13 +182,14 @@ int check_protocol(char* command, user *user_obj, int connfd){
       return join(room, user_obj, connfd);
     }
   else if(strcmp(pch, "\\ROOMS") == 0){
-    rooms();
+    rooms(connfd);
   	return 1;
   }
-  /*else if(strcmp(pch, "\\LEAVE") == 0){
-    leave();
+  else if(strcmp(pch, "\\LEAVE") == 0){
+    leave(connfd);
   	return 1;
   }
+  /*
   else if(strcmp(pch, "\\WHO") == 0){
     who();
   	return 1;
