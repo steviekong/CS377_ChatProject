@@ -175,8 +175,13 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
   if(found != NULL){
     for(int j = 0; j <= found->userCount; j ++){
       int current_connfd = found->userList[j]->connfd;
-      printf("USer message: %s\n", message);
-      send_message(current_connfd, message);
+      printf("USer message: %s UserName: %s\n", message, found->userList[j]->userName);
+      char final_message[1000] = "";
+      strcpy(final_message, found->userList[j]->userName);
+      strcat(final_message,": ");
+      strcat(final_message, message);
+      strcat(message, "\n\0");
+      send_message(current_connfd, final_message);
     }
   }
 }
@@ -185,10 +190,10 @@ int check_protocol(char* command, user *user_obj, int connfd){
   printf("%s\n", command);
   char copy_command[1000];
   strcpy(copy_command, command);
-  printf("works\n");
-  char* pch = strtok(command, " ");
+  printf("works username %s\n", user_obj->userName);
   if(command[0] == '\\'){
     // do something
+    char* pch = strtok(command, " ");
     if(strncmp(pch, "\\JOIN", strlen("\\JOIN")) == 0){
       printf("joining\n");
       pch = strtok(NULL, " ");
@@ -198,33 +203,34 @@ int check_protocol(char* command, user *user_obj, int connfd){
       user_obj->userName = nick;
       return join(room, user_obj, connfd);
     }
-  else if(strcmp(pch, "\\ROOMS") == 0){
-    rooms(connfd);
-  	return 1;
-  }
-  else if(strcmp(pch, "\\LEAVE") == 0){
-    leave(connfd);
-  	return 1;
-  }
-  else if(strcmp(pch, "\\WHO") == 0){
-    who(user_obj, connfd);
-  	return 1;
-  }
-  /*
-  else if(strcmp(pch, "\\HELP") == 0){
-    help();
-  	return 1;
-  }
-  else if(isUser(pch)){
-    char * username;
-    strcpy(username, pch+1);
-    char * message = strtok(command, " ");
-    nickname(user_obj, username, message);
-  	return 1;
-  }*/
+    else if(strcmp(pch, "\\ROOMS") == 0){
+      rooms(connfd);
+    	return 1;
+    }
+    else if(strcmp(pch, "\\LEAVE") == 0){
+      leave(connfd);
+    	return 1;
+    }
+    else if(strcmp(pch, "\\WHO") == 0){
+      who(user_obj, connfd);
+    	return 1;
+    }
+    /*
+    else if(strcmp(pch, "\\HELP") == 0){
+      help();
+    	return 1;
+    }
+    else if(isUser(pch)){
+      char * username;
+      strcpy(username, pch+1);
+      char * message = strtok(command, " ");
+      nickname(user_obj, username, message);
+    	return 1;
+    }*/
   }
   else{
-    send_all_in_room(user_obj, copy_command, connfd);
+    printf("User Name is: %s message: %s\n", user_obj->userName, copy_command);
+    send_all_in_room(user_obj, copy_command, user_obj->connfd);
     return 1; 
   }
 }
@@ -307,6 +313,7 @@ void echo(int connfd, user* user_obj) {
   while ((n = receive_message(connfd, message)) > 0) {
     message[n] = '\0';  // null terminate message (for string operations)
     printf("Server received message %s (%d bytes)\n", message, (int)n);
+    printf("echo username is%s\n", user_obj->userName);
     n = process_message(connfd, message, user_obj);
   }
 }
@@ -386,7 +393,7 @@ int main(int argc, char **argv) {
     printf("server connected to %s (%s), port %u\n", hp->h_name, haddrp,
            client_port);
 
-    user *new_user = (user*)malloc(sizeof(user));
+    user *new_user = malloc(sizeof(user));
     *new_user = (user) {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port, .connfd = *connfdp};
     user_id++;
     // Create a new thread to handle the connection.
@@ -406,6 +413,7 @@ void *thread(void *arguments) {
   // Free the incoming argument - allocated in the main thread. YOU NEED TO DO THIS!! THIS CODE LEAKS LIKE HELL !!!!!
 
   // Handle the echo client requests.
+  printf("username before echo %s\n", (user*)args->arg2->userName);
   echo(connfd, (user*)args->arg2);
   printf("client disconnected.\n");
   // Don't forget to close the connection!
