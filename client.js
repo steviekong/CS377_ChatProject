@@ -16,7 +16,7 @@ client.on('data', (data) => {
     let res = data.toString();
     if (listMessage) {
         let xs = res.trimRight().split(','),
-            len = xs.length;
+        len = xs.length;
         if (len > 1) {
             res = xs[len - 2];
             if (!first)
