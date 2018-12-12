@@ -86,9 +86,9 @@ int join(char* roomname, user *user_obj, int connfd){
     user_obj->roomName = roomname;
     found->userList[found->userCount] = user_obj;
     char str[1000];
-    strcpy(str, roomname);
-    strcat(str, " ");
     strcat(str, user_obj->userName);
+    strcat(str, " ");
+    strcpy(str, roomname);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
@@ -102,9 +102,9 @@ int join(char* roomname, user *user_obj, int connfd){
     room_list[numRooms] = *new_room;
     numRooms += 1;
     char str[1000];
-    strcpy(str, roomname);
-    strcat(str, " ");
     strcat(str, user_obj->userName);
+    strcat(str, " ");
+    strcpy(str, roomname);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
@@ -133,11 +133,31 @@ void leave(int connfd){
   close(connfd);
   pthread_exit((void *)2);
 }
-/*
-//WHO route 
-char **who(){
 
+//WHO route 
+void who(user* user_obj, int connfd){
+  int i = 0; 
+  room *found;
+  while(i < 100 && room_list[i].roomName != NULL){
+    printf("looping\n");
+    if(strcmp(room_list[i].roomName, user_obj->roomName) == 0){
+      printf("works\n");
+      found = &room_list[i];
+      break; 
+    }
+  }
+  if(found != NULL){
+    char users[1000];
+    strcpy(users, found->userList[0]->userName);
+    strcat(users, "\n");
+    for(int j = 1; j <= found->userCount; j ++){
+      strcat(users, found->userList[j]->userName);
+      strcat(users, "\n");
+    }
+    send_message(connfd, users);
+  }
 }
+/*
 //HELP route
 char **help(){
 
@@ -189,11 +209,11 @@ int check_protocol(char* command, user *user_obj, int connfd){
     leave(connfd);
   	return 1;
   }
-  /*
   else if(strcmp(pch, "\\WHO") == 0){
-    who();
+    who(user_obj, connfd);
   	return 1;
   }
+  /*
   else if(strcmp(pch, "\\HELP") == 0){
     help();
   	return 1;
