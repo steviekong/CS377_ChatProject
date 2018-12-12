@@ -67,11 +67,8 @@ int join(char* roomname, user *user_obj, int connfd){
   room *found = NULL;
   int i = 0; 
   while(i < 100 && room_list[i].roomName != NULL){
-    printf("executing join %s\n", room_list[i].roomName);
     if(strcmp(room_list[i].roomName, roomname) == 0){
-      printf("found!\n");
       found = &room_list[i];
-      printf("wokring\n");
       break; 
     }
     else{
@@ -79,21 +76,18 @@ int join(char* roomname, user *user_obj, int connfd){
     }
     i++;
   }
-  printf("executing join after while\n");
   if(found != NULL){
-    printf("adding user to room\n");
     found->userCount += 1;
     user_obj->roomName = roomname;
     found->userList[found->userCount] = user_obj;
     char str[1000];
-    strcat(str, user_obj->userName);
+    strcpy(str, user_obj->userName);
     strcat(str, " ");
-    strcpy(str, roomname);
+    strcat(str, roomname);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
   else{
-    printf("adding new room\n");
     room *new_room = (room*)(malloc(sizeof(room)));
     new_room->roomName = roomname;
     new_room->userCount = 0;
@@ -102,9 +96,9 @@ int join(char* roomname, user *user_obj, int connfd){
     room_list[numRooms] = *new_room;
     numRooms += 1;
     char str[1000];
-    strcat(str, user_obj->userName);
+    strcpy(str, user_obj->userName);
     strcat(str, " ");
-    strcpy(str, roomname);
+    strcat(str, roomname);
     strcat(str, "\n\0");
     return send_message(connfd, str);
   }
@@ -139,9 +133,7 @@ void who(user* user_obj, int connfd){
   int i = 0; 
   room *found;
   while(i < 100 && room_list[i].roomName != NULL){
-    printf("looping\n");
     if(strcmp(room_list[i].roomName, user_obj->roomName) == 0){
-      printf("works\n");
       found = &room_list[i];
       break; 
     }
@@ -178,10 +170,12 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
       found = &room_list[i];
       break; 
     }
+    i++;
   }
   if(found != NULL){
     for(int j = 0; j <= found->userCount; j ++){
       int current_connfd = found->userList[j]->connfd;
+      printf("USer message: %s\n", message);
       send_message(current_connfd, message);
     }
   }
@@ -189,6 +183,9 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
 
 int check_protocol(char* command, user *user_obj, int connfd){
   printf("%s\n", command);
+  char copy_command[1000];
+  strcpy(copy_command, command);
+  printf("works\n");
   char* pch = strtok(command, " ");
   if(command[0] == '\\'){
     // do something
@@ -227,8 +224,7 @@ int check_protocol(char* command, user *user_obj, int connfd){
   }*/
   }
   else{
-    printf("User message\n");
-    send_all_in_room(user_obj, command, connfd);
+    send_all_in_room(user_obj, copy_command, connfd);
     return 1; 
   }
 }
@@ -293,7 +289,7 @@ int send_echo_message(int connfd, char *message) {
 
 int process_message(int connfd, char *message, user *user_obj) {
   if (is_list_message(message)) {
-    printf("Server responding with list response.\n");
+    printf("Server responding with list response. %s\n", message);
     return send_list_message(connfd);
   } else {
     printf("Server responding with echo response.\n");
@@ -393,12 +389,10 @@ int main(int argc, char **argv) {
     user *new_user = (user*)malloc(sizeof(user));
     *new_user = (user) {.userName = "", .connected = 1, .id = user_id, .hp = hp, .client_port = client_port, .connfd = *connfdp};
     user_id++;
-    printf("the user id is %d\n", user_id);
     // Create a new thread to handle the connection.
     arg_struct args = {.arg1 = *connfdp, .arg2 = new_user};
     pthread_t tid;
     pthread_create(&tid, NULL, thread, (void *)&args);
-    printf("User thread created\n");
   }
 }
 
@@ -406,12 +400,9 @@ int main(int argc, char **argv) {
 void *thread(void *arguments) {
   // Grab the connection file descriptor.
   arg_struct *args = arguments;
-  printf("args init\n");
   int connfd = *((int *)(&args->arg1));
-  printf("got confd\n");
   // Detach the thread to self reap.
   pthread_detach(pthread_self());
-  printf("detached\n");
   // Free the incoming argument - allocated in the main thread. YOU NEED TO DO THIS!! THIS CODE LEAKS LIKE HELL !!!!!
 
   // Handle the echo client requests.
