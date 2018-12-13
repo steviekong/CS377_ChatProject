@@ -28,6 +28,7 @@ typedef struct{
     char roomName[100];
     user *userList[100];
     int userCount;
+    char room_message[8192];
 } room;
 
 typedef struct{
@@ -38,7 +39,6 @@ typedef struct{
 int numRooms = 0; 
 room room_list[100];
 int user_id = 0; 
-
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
 
@@ -114,7 +114,7 @@ void join(char* roomname, user *user_obj, int connfd){
     char str[1000];
     strcpy(str, "Your Nick name is ");
     strcat(str, user_obj->userName);
-    strcat(str, " ");
+    strcat(str, " "); 
     strcat(str, "and you have created and joined a new room called ");
     strcat(str, roomname);
     strcat(str, "\n\0");
@@ -190,17 +190,18 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
     i++;
   }
   if(found != NULL){
+    pthread_mutex_lock(&lock);
+    char final_message[1000];
+    strcpy(final_message, user_obj->userName);
+    strcat(final_message,": ");
+    strcat(final_message, message);
+    strcat(message, "\n\0");
+    strcpy(found->room_message, final_message);
+    pthread_mutex_unlock(&lock);
     for(int j = 0; j <= found->userCount; j ++){
       int current_connfd = found->userList[j]->connfd;
       printf("USer message: %s UserName: %s roomName: %s\n", message, found->userList[j]->userName, found->roomName);
-      char final_message[1000];
-      strcpy(final_message, user_obj->userName);
-      strcat(final_message,": ");
-      strcat(final_message, message);
-      strcat(message, "\n\0");
-      //pthread_mutex_lock(&lock);
-      send_message(current_connfd, final_message);
-      //pthread_mutex_unlock(&lock);
+      send_message(current_connfd, found->room_message);
     }
   }
   else{

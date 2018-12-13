@@ -1,14 +1,14 @@
 var net = require('net');
 var readline = require('readline');
 
-var listMessage = true;
+var listMessage = false;
 
 var first = true;
 
 var client = new net.Socket();
 client.connect(3000, '127.0.0.1', () => {
     ('Connected to echo server.');
-    listMessage = true;
+    listMessage = false;
     client.write('-');
 });
 
@@ -28,7 +28,7 @@ client.on('data', (data) => {
         first = false;
     } else {
 
-        //console.log(res);
+        console.log(res);
     }
     recursiveAsyncReadLine(client, res)
 });
@@ -48,7 +48,7 @@ var recursiveAsyncReadLine = (client, prompt) => {
             client.destroy();
             return rl.close();
         } else if (answer == '-') {
-            listMessage = true;
+            listMessage = false;
             client.write(answer);
         } else {
             client.write(answer);
