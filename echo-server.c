@@ -14,31 +14,31 @@
 #include <unistd.h>
 
 
-typedef struct {
-    char userName[1000];
-    int connected;
-    int id;
-    struct hostent *hp;
-    unsigned short client_port;
-    char roomName[100];
-    int connfd; 
+typedef struct { //User struct
+    char userName[1000]; //Username
+    int connected; //Whether user is connected or not using 0 and 1
+    int id; //User id
+    struct hostent *hp; //Hostent
+    unsigned short client_port; //Port
+    char roomName[100]; //Name of room user is in
+    int connfd;  //File Descriptor
 } user;
 
-typedef struct{
-    char roomName[100];
-    user *userList[100];
-    int userCount;
-    char room_message[8192];
+typedef struct{ //Room struct
+    char roomName[100]; //Room name
+    user *userList[100]; //List of users in room
+    int userCount; //Number of users in room
+    char room_message[8192]; //Store current room message
 } room;
 
-typedef struct{
+typedef struct{ //Arguement struct
     int arg1;
     user *arg2;
 } arg_struct;
 
-int numRooms = 0; 
-room room_list[100];
-int user_id = 0; 
+int numRooms = 0; //Global number of rooms
+room room_list[100]; //Global room list
+int user_id = 0; //Global user ids to be incremented with each new user
 /* Simplifies calls to bind(), connect(), and accept() */
 typedef struct sockaddr SA;
 
@@ -74,7 +74,9 @@ void add_message(char *buf) {
   pthread_mutex_unlock(&lock);
 }
 
-//JOIN route
+//This function joins the user into the requested room and adds them to the user list.
+//Creates new room if the requested room doesn't exist and adds user to the user list.
+//Responds to client with room name.
 void join(char* roomname, user *user_obj, int connfd){
   room *found = NULL;
   int i = 0; 
@@ -123,7 +125,7 @@ void join(char* roomname, user *user_obj, int connfd){
   }
 }
 
-//ROOMS route 
+//This function tells the users the list of currently existing and available rooms.
 int rooms(int connfd){
   if(room_list[0].roomName == NULL) return send_message(connfd, "There are no rooms on the server!");
   char rooms[1000];
@@ -138,14 +140,15 @@ int rooms(int connfd){
   return send_message(connfd, rooms);
 }
 
-//LEAVE route
+//This function removes the user from their current room and returns "GOODBYE" to the user.
+//Disconnects client.
 void leave(int connfd){
   send_message(connfd, "GOODBYE");
   close(connfd);
   pthread_exit((void *)2);
 }
 
-//WHO route 
+//This function returns a list of the other users in the room from the room's user list to the current user.
 void who(user* user_obj, int connfd){
   int i = 0; 
   room *found;
@@ -166,14 +169,17 @@ void who(user* user_obj, int connfd){
     send_message(connfd, users);
   }
 }
+
+//This function returns to user a list of currently available commands.
 void help(int connfd){
- char *toOut = "'\\JOIN nickname room': allows users to enter chatrooms,\n'\\ROOMS': see list of available chatrooms,\n'\\LEAVE': leave chatroom,\n'\\WHO': see list of users in current room\n";
+ char *toOut = "'\\JOIN nickname room': allows users to enter chatrooms,\n'\\ROOMS': see list of available chatrooms,\n'\\NEWNICK': change user's nickname,\n'\\LEAVE': leave chatroom,\n'\\WHO': see list of users in current room\n";
  pthread_mutex_lock(&lock);
  send_message(connfd, toOut);
  pthread_mutex_unlock(&lock);
 }
 
-//nickname route
+//Special Addition:
+//This function allows the user to change their nickname.
 void new_nick(user* user_obj, int connfd, char* nick){
   int i = 0; 
   room *found;
@@ -192,7 +198,7 @@ void new_nick(user* user_obj, int connfd, char* nick){
   }
 }
 
-//invalid command route 
+//This function sends the user's message to all other users in room. 
 void send_all_in_room(user* user_obj, char* message, int connfd){
   int i = 0; 
   room *found;
@@ -223,6 +229,8 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
   }
 }
 
+//This function checks the user's message to see if it's a command.
+//If not it treats it as a message to be sent to the room.
 int check_protocol(char* command, user *user_obj, int connfd){
   char copy_command[1000];
   strcpy(copy_command, command);

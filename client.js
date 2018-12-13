@@ -28,7 +28,7 @@ client.on('data', (data) => {
         first = false;
     } else {
 
-        console.log(res);
+        //console.log(res);
     }
     recursiveAsyncReadLine(client, res)
 });
@@ -48,7 +48,7 @@ var recursiveAsyncReadLine = (client, prompt) => {
             client.destroy();
             return rl.close();
         } else if (answer == '-') {
-            listMessage = false;
+            listMessage = true;
             client.write(answer);
         } else {
             client.write(answer);
