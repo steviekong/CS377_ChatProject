@@ -172,12 +172,26 @@ void help(int connfd){
  send_message(connfd, toOut);
  pthread_mutex_unlock(&lock);
 }
-/*
+
 //nickname route
-void nickname(char *user1, char*user2, char* message){
-  
+void new_nick(user* user_obj, int connfd, char* nick){
+  int i = 0; 
+  room *found;
+  while(i < 100 && room_list[i].roomName != NULL){
+    if(strcmp(room_list[i].roomName, user_obj->roomName) == 0){
+      found = &room_list[i];
+      break; 
+    }
+  }
+  if(found != NULL){
+    strcpy(user_obj->userName, nick);
+    char ret_string[1000];
+    strcpy(ret_string, "You new nickname is ");
+    strcat(ret_string, nick);
+    send_message(connfd, ret_string);
+  }
 }
-*/
+
 //invalid command route 
 void send_all_in_room(user* user_obj, char* message, int connfd){
   int i = 0; 
@@ -242,6 +256,13 @@ int check_protocol(char* command, user *user_obj, int connfd){
       help(connfd);
     	return 1;
     }
+    else if(strcmp(pch, "\\NEWNICK") == 0){
+      printf("new nickname!\n");
+      pch = strtok(NULL, " ");
+      char* nick = pch;
+      new_nick(user_obj, connfd, nick);
+      return 1;
+    }
     else{
       char return_message[1000];
       strcpy(return_message, "\"");
@@ -251,14 +272,6 @@ int check_protocol(char* command, user *user_obj, int connfd){
       strcat(return_message, "\n\0");
       send_message(connfd, return_message);
     }
-    /*
-    else if(isUser(pch)){
-      char * username;
-      strcpy(username, pch+1);
-      char * message = strtok(command, " ");
-      nickname(user_obj, username, message);
-    	return 1;
-    }*/
   }
   else{
     printf("User Name is: %s message: %s\n", user_obj->userName, copy_command);

@@ -1,7 +1,7 @@
 var net = require('net');
 var readline = require('readline');
 
-var listMessage = false;
+var listMessage = true;
 
 var first = true;
 
