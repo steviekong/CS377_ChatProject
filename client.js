@@ -7,7 +7,7 @@ var first = true;
 
 var client = new net.Socket();
 client.connect(3000, '127.0.0.1', () => {
-    console.log('Connected to echo server.');
+    ('Connected to echo server.');
     listMessage = true;
     client.write('-');
 });
@@ -22,12 +22,13 @@ client.on('data', (data) => {
             if (!first)
                 console.log(xs.join(','));
         } else {
-            res = ':-p'
+            res = ''
         }
         listMessage = false;
         first = false;
     } else {
-        console.log(res);
+
+        //console.log(res);
     }
     recursiveAsyncReadLine(client, res)
 });
@@ -42,7 +43,7 @@ var rl = readline.createInterface({
 });
 
 var recursiveAsyncReadLine = (client, prompt) => {
-    rl.question(`(${prompt}) `, (answer) => {
+    rl.question(`${prompt} `, (answer) => {
         if (answer == 'quit') {
             client.destroy();
             return rl.close();

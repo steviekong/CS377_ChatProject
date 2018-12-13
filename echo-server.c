@@ -20,7 +20,7 @@ typedef struct {
     int id;
     struct hostent *hp;
     unsigned short client_port;
-    char *roomName;
+    char roomName[100];
     int connfd; 
 } user;
 
@@ -59,6 +59,7 @@ pthread_mutex_t lock;
 
 // A wrapper around send to simplify calls.
 int send_message(int connfd, char *message) {
+  printf("sending %s\n", message);
   return send(connfd, message, strlen(message), 0);
 }
 
@@ -82,20 +83,19 @@ void join(char* roomname, user *user_obj, int connfd){
       found = &room_list[i];
       break; 
     }
-    else{
-      printf("we didnt find anything\n");
-    }
     i++;
   }
   if(found != NULL){
     found->userCount += 1;
     printf(" user count is %d\n",found->userCount);
-    user_obj->roomName = roomname;
+    strcpy(user_obj->roomName, roomname);
     pthread_mutex_lock(&lock);
     found->userList[found->userCount] = user_obj;
     char str[1000];
-    strcpy(str, user_obj->userName);
+    strcpy(str, "Your Nick name is ");
+    strcat(str, user_obj->userName);
     strcat(str, " ");
+    strcat(str, "and you have joined an existing room called ");
     strcat(str, roomname);
     strcat(str, "\n\0");
     send_message(connfd, str);
@@ -107,14 +107,15 @@ void join(char* roomname, user *user_obj, int connfd){
     room *new_room = (room*)(malloc(sizeof(room)));
     strcpy(new_room->roomName,roomname);
     new_room->userCount = 0;
-    user_obj->roomName = roomname;
+    strcpy(user_obj->roomName, roomname);
     new_room->userList[new_room->userCount] = user_obj;
     room_list[numRooms] = *new_room;
     numRooms += 1;
-    pthread_mutex_unlock(&lock);
     char str[1000];
-    strcpy(str, user_obj->userName);
+    strcpy(str, "Your Nick name is ");
+    strcat(str, user_obj->userName);
     strcat(str, " ");
+    strcat(str, "and you have created and joined a new room called ");
     strcat(str, roomname);
     strcat(str, "\n\0");
     send_message(connfd, str);
@@ -134,7 +135,6 @@ int rooms(int connfd){
     strcat(rooms, "\n");
     i++;
   }
-  add_message(rooms);
   return send_message(connfd, rooms);
 }
 
@@ -163,7 +163,6 @@ void who(user* user_obj, int connfd){
       strcat(users, found->userList[j]->userName);
       strcat(users, "\n");
     }
-    add_message(users);
     send_message(connfd, users);
   }
 }
@@ -199,10 +198,13 @@ void send_all_in_room(user* user_obj, char* message, int connfd){
       strcat(final_message,": ");
       strcat(final_message, message);
       strcat(message, "\n\0");
-      pthread_mutex_lock(&lock);
+      //pthread_mutex_lock(&lock);
       send_message(current_connfd, final_message);
-      pthread_mutex_unlock(&lock);
+      //pthread_mutex_unlock(&lock);
     }
+  }
+  else{
+    printf("cant find a room with that name!\n");
   }
 }
 
@@ -238,6 +240,15 @@ int check_protocol(char* command, user *user_obj, int connfd){
     else if(strcmp(pch, "\\HELP") == 0){
       help(connfd);
     	return 1;
+    }
+    else{
+      char return_message[1000];
+      strcpy(return_message, "\"");
+      strcat(return_message,copy_command);
+      strcat(return_message,"\"");
+      strcat(return_message," command not recognized");
+      strcat(return_message, "\n\0");
+      send_message(connfd, return_message);
     }
     /*
     else if(isUser(pch)){
@@ -298,7 +309,6 @@ int send_list_message(connfd) {
 
 int send_echo_message(int connfd, char *message) {
   upper_case(message);
-  add_message(message);
   return send_message(connfd, message);
 }
 
